@@ -1,0 +1,12 @@
+node_modules/
+node_modules.linked/
+node_modules.source/
+dist/
+.env
+.env.local
+.vercel/
+.vscode/
+.DS_Store
+coverage/
+*.log
+.build-temp/
