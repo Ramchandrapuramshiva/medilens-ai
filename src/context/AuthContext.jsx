@@ -12,9 +12,6 @@ async function getAuthClient() {
   return client;
 }
 
-// ===============================
-// Auto Create / Update Profile
-// ===============================
 async function syncUserProfile(client, user) {
   if (!user?.id) return;
 
@@ -46,8 +43,8 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [sessionError, setSessionError] = useState('');
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(() => (
-    window.location.hash.includes('type=recovery')
-    || new URLSearchParams(window.location.search).get('type') === 'recovery'
+    window.location.hash.includes('type=recovery') ||
+    new URLSearchParams(window.location.search).get('type') === 'recovery'
   ));
 
   useEffect(() => {
@@ -64,15 +61,15 @@ export function AuthProvider({ children }) {
         if (!active || !client) return;
 
         ({ data: { subscription } } = client.auth.onAuthStateChange(
-          async (event, nextSession) => {
+          (event, nextSession) => {
             if (!active) return;
-
-            if (nextSession?.user) {
-              await syncUserProfile(client, nextSession.user);
-            }
 
             setSession(nextSession);
             setLoading(false);
+
+            if (nextSession?.user) {
+              syncUserProfile(client, nextSession.user);
+            }
 
             if (event === 'PASSWORD_RECOVERY') {
               setIsPasswordRecovery(true);
@@ -86,35 +83,31 @@ export function AuthProvider({ children }) {
 
         client.auth
           .getSession()
-          .then(async ({ data, error }) => {
+          .then(({ data, error }) => {
             if (!active) return;
 
             if (error) {
               setSessionError(error.message);
             }
 
-            if (data.session?.user) {
-              await syncUserProfile(client, data.session.user);
-            }
-
             setSession(data.session ?? null);
             setLoading(false);
+
+            if (data.session?.user) {
+              syncUserProfile(client, data.session.user);
+            }
           })
           .catch((error) => {
             if (!active) return;
 
-            setSessionError(
-              error.message || 'Unable to restore your secure session.',
-            );
+            setSessionError(error.message || 'Unable to restore your secure session.');
             setLoading(false);
           });
       })
       .catch((error) => {
         if (!active) return;
 
-        setSessionError(
-          error.message || 'Unable to initialize authentication.',
-        );
+        setSessionError(error.message || 'Unable to initialize authentication.');
         setLoading(false);
       });
 
@@ -133,71 +126,51 @@ export function AuthProvider({ children }) {
     });
 
     if (error) throw error;
-
     return data;
   }, []);
 
-  const signUpWithPassword = useCallback(
-    async ({ email, password, emailRedirectTo }) => {
-      const client = await getAuthClient();
+  const signUpWithPassword = useCallback(async ({ email, password, emailRedirectTo }) => {
+    const client = await getAuthClient();
 
-      const { data, error } = await client.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo,
-        },
-      });
+    const { data, error } = await client.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo },
+    });
 
-      if (error) throw error;
-
-      return data;
-    },
-    [],
-  );
+    if (error) throw error;
+    return data;
+  }, []);
 
   const signInWithGoogle = useCallback(async ({ redirectTo }) => {
     const client = await getAuthClient();
 
     const { data, error } = await client.auth.signInWithOAuth({
       provider: 'google',
-      options: {
-        redirectTo,
-      },
+      options: { redirectTo },
     });
 
     if (error) throw error;
-
     return data;
   }, []);
 
-  const sendPasswordReset = useCallback(
-    async ({ email, redirectTo }) => {
-      const client = await getAuthClient();
+  const sendPasswordReset = useCallback(async ({ email, redirectTo }) => {
+    const client = await getAuthClient();
 
-      const { data, error } = await client.auth.resetPasswordForEmail(
-        email,
-        {
-          redirectTo,
-        },
-      );
+    const { data, error } = await client.auth.resetPasswordForEmail(email, {
+      redirectTo,
+    });
 
-      if (error) throw error;
-
-      return data;
-    },
-    [],
-  );
+    if (error) throw error;
+    return data;
+  }, []);
 
   const updatePassword = useCallback(async (password) => {
     const client = await getAuthClient();
 
-    const { data, error } = await client.auth.updateUser({
-      password,
-    });
+    const { data, error } = await client.auth.updateUser({ password });
 
     if (error) throw error;
-
     return data;
   }, []);
 
@@ -209,48 +182,37 @@ export function AuthProvider({ children }) {
     if (error) throw error;
   }, []);
 
-  const value = useMemo(
-    () => ({
-      configured: isSupabaseConfigured,
-      isPasswordRecovery,
-      loading,
-      session,
-      sessionError,
-      signInWithGoogle,
-      signInWithPassword,
-      signOut,
-      signUpWithPassword,
-      updatePassword,
-      sendPasswordReset,
-      user: session?.user ?? null,
-    }),
-    [
-      isPasswordRecovery,
-      loading,
-      session,
-      sessionError,
-      signInWithGoogle,
-      signInWithPassword,
-      signOut,
-      signUpWithPassword,
-      updatePassword,
-      sendPasswordReset,
-    ],
-  );
+  const value = useMemo(() => ({
+    configured: isSupabaseConfigured,
+    isPasswordRecovery,
+    loading,
+    session,
+    sessionError,
+    signInWithGoogle,
+    signInWithPassword,
+    signOut,
+    signUpWithPassword,
+    updatePassword,
+    sendPasswordReset,
+    user: session?.user ?? null,
+  }), [
+    isPasswordRecovery,
+    loading,
+    session,
+    sessionError,
+    signInWithGoogle,
+    signInWithPassword,
+    signOut,
+    signUpWithPassword,
+    updatePassword,
+    sendPasswordReset,
+  ]);
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
   const context = useContext(AuthContext);
-
-  if (!context) {
-    throw new Error('useAuth must be used within AuthProvider.');
-  }
-
+  if (!context) throw new Error('useAuth must be used within AuthProvider.');
   return context;
 }
