@@ -16,14 +16,12 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext.jsx';
 import PageHeader from '../components/PageHeader.jsx';
 import SafetyBanner from '../components/SafetyBanner.jsx';
 import { analysisTypes } from '../data/analysisTypes.js';
 import { clearLastResult, setLastResult } from '../utils/storage.js';
 import { INVALID_DOCUMENT_MESSAGE, validateMedicalDocument } from '../utils/medicalDocumentValidation.js';
 import { extractMedicalDocument } from '../utils/prescriptionExtraction.js';
-import { getSupabaseClient } from '../lib/supabaseClient.js';
 
 const typeIcons = {
   prescription: ScanLine,
@@ -52,7 +50,6 @@ const emptyValidation = {
 function AnalyzePage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
   const uploadInputRef = useRef(null);
   const cameraInputRef = useRef(null);
   const videoRef = useRef(null);
@@ -271,28 +268,6 @@ function AnalyzePage() {
     && (validation.status === 'valid' || (validation.status === 'borderline' && validation.continued))
     && !loading;
 
-  const saveScanHistory = async (result) => {
-    if (!user?.id) return;
-
-    try {
-      const client = await getSupabaseClient();
-      if (!client) return;
-
-      const { error } = await client.from('scan_history').insert({
-        user_id: user.id,
-        document_type: analysisType,
-        title: result?.title || result?.documentTitle || `${analysisType} analysis`,
-        raw_ocr_text: result?.rawOcrText || result?.ocrText || '',
-        extracted_data: result,
-        confidence: result?.confidence || null,
-      });
-
-      if (error) console.error('Scan history save failed:', error);
-    } catch (error) {
-      console.error('Scan history save failed:', error);
-    }
-  };
-
   const analyze = async () => {
     if (!canAnalyze) return;
     extractionControllerRef.current?.abort();
@@ -312,7 +287,6 @@ function AnalyzePage() {
       });
       if (controller.signal.aborted) return;
       setLastResult(result);
-      await saveScanHistory(result);
       navigate('/results');
     } catch (error) {
       if (error.name !== 'AbortError') {
